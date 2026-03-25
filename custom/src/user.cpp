@@ -39,6 +39,15 @@ bool button_a, button_b, button_x, button_y;
 bool button_up_arrow, button_down_arrow, button_left_arrow, button_right_arrow;
 int chassis_flag = 0;
 
+// “button charge detection” for toggles (edge detection)
+bool matchloadCD = true;
+bool descoreCD = true;
+bool liftCD = true;
+
+bool matchloadState = false;
+bool descoreState = false;
+bool liftState = false;
+
 void runDriver() {
   stopChassis(coast);
   heading_correction = false;
@@ -63,10 +72,59 @@ void runDriver() {
     button_left_arrow = controller_1.ButtonLeft.pressing();
     button_right_arrow = controller_1.ButtonRight.pressing();
 
-    // default tank drive or replace it with your preferred driver code here: 
-    driveChassis(ch3 * 0.12, ch2 * 0.12);
+    // intake control: R1 in, R2 out
+    int intakePct = (r1 ? 100 : 0) - (r2 ? 100 : 0);
+    if (intakePct > 0) {
+      intake_motor.spin(directionType::fwd, intakePct, velocityUnits::pct);
+    } else if (intakePct < 0) {
+      intake_motor.spin(directionType::rev, -intakePct, velocityUnits::pct);
+    } else {
+      intake_motor.stop(brakeType::coast);
+    }
 
-    wait(10, msec); 
+    // matchload toggle on down arrow
+    if (button_down_arrow) {
+      if (matchloadCD) {
+        matchloadCD = false;
+        matchloadState = !matchloadState;
+        matchload.set(matchloadState);
+      }
+    } else {
+      matchloadCD = true;
+    }
+
+    // descore toggle on B
+    if (button_b) {
+      if (descoreCD) {
+        descoreCD = false;
+        descoreState = !descoreState;
+        descore.set(descoreState);
+      }
+    } else {
+      descoreCD = true;
+    }
+
+    // hood on L1 / off otherwise
+    if (l1) {
+      hood.set(true);
+    } else {
+      hood.set(false);
+    }
+
+    // lift toggle on L2
+    if (l2) {
+      if (liftCD) {
+        liftCD = false;
+        liftState = !liftState;
+        lift.set(liftState);
+      }
+    } else {
+      liftCD = true;
+    }
+
+    driveChassis(ch3 * 0.12 + ch1 * 0.12 , ch3 * 0.12 - ch1 * 0.12);
+
+    wait(10, msec);
   }
 }
 
